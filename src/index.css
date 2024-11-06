@@ -1,0 +1,106 @@
+@import 'admin-lte/dist/css/adminlte.min.css';
+
+/* Reset and base styles */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Wrapper styles */
+.wrapper {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* Header styles */
+.main-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1030;
+}
+
+/* Sidebar styles */
+.main-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 1025;
+}
+
+/* Content wrapper styles */
+.content-wrapper {
+    margin-top: 57px; /* Height of header */
+    margin-bottom: 57px; /* Height of footer */
+    min-height: calc(100vh - 114px); /* 100vh - (header + footer) */
+    flex: 1 0 auto;
+    padding-bottom: 1rem;
+}
+
+/* Footer styles */
+.main-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1020;
+    background: white;
+    margin-left: 250px; /* Same as sidebar width */
+    height: 57px;
+}
+
+/* Footer adjustment when sidebar is collapsed */
+.sidebar-collapse .main-footer {
+    margin-left: 4.6rem;
+}
+
+@media (max-width: 991.98px) {
+    .main-footer {
+        margin-left: 0 !important;
+    }
+}
+
+/* DataTable styles */
+.datatable-crud-demo .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.datatable-crud-demo {
+    margin: 20px;
+    padding-bottom: 57px; /* Add padding to prevent content from being hidden by footer */
+}
+
+.p-button-lg .p-button-icon {
+    font-size: 1.25rem;
+}
+
+/* AdminLTE sidebar hover fix */
+.sidebar-mini.sidebar-collapse .main-sidebar:hover {
+    transform: translate(0, 0);
+}
+
+/* Content adjustments for sidebar states */
+@media (min-width: 992px) {
+    .sidebar-mini.sidebar-collapse .content-wrapper {
+        margin-left: 4.6rem;
+    }
+}
+
+/* Ensure proper content margin with sidebar */
+.content-wrapper {
+    margin-left: 250px;
+}
+
+@media (max-width: 991.98px) {
+    .content-wrapper {
+        margin-left: 0;
+    }
+}
