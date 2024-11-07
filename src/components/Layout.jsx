@@ -6,8 +6,10 @@ import Sidebar from './Sidebar';
 const Layout = () => {
     const { user, cerrarSession } = useContext(UserContext);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(window.innerWidth <= 991);
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const sidebarRef = useRef(null);
     const contentRef = useRef(null);
+    const userMenuRef = useRef(null);
 
     useEffect(() => {
         const handleResize = () => {
@@ -15,12 +17,29 @@ const Layout = () => {
         };
 
         window.addEventListener('resize', handleResize);
-        handleResize(); // Initial call
+        handleResize();
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setShowUserMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, []);
 
     const toggleSidebar = () => {
         setSidebarCollapsed(!sidebarCollapsed);
+    };
+
+    const toggleUserMenu = () => {
+        setShowUserMenu(!showUserMenu);
     };
 
     useEffect(() => {
@@ -59,10 +78,21 @@ const Layout = () => {
                     </li>
                 </ul>
                 <ul className="navbar-nav ml-auto">
-                    <li className="nav-item">
-                        <a className="nav-link" href="#" onClick={cerrarSession}>
-                            <i className="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    <li className="nav-item dropdown" ref={userMenuRef}>
+                        <a className="nav-link" href="#" onClick={toggleUserMenu}>
+                            <i className="fas fa-user-circle fa-2x"></i>
                         </a>
+                        {showUserMenu && (
+                            <div className="dropdown-menu dropdown-menu-right show">
+                                <Link to="/account-settings" className="dropdown-item">
+                                    <i className="fas fa-cog mr-2"></i> Configuración de cuenta
+                                </Link>
+                                <div className="dropdown-divider"></div>
+                                <a href="#" className="dropdown-item" onClick={cerrarSession}>
+                                    <i className="fas fa-sign-out-alt mr-2"></i> Cerrar sesión
+                                </a>
+                            </div>
+                        )}
                     </li>
                 </ul>
             </nav>
