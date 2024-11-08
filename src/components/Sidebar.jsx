@@ -42,11 +42,13 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
                     submenus: []
                 });
             }
+           
             menuMap.get(item.menu).submenus.push({
                 id: item.idSubMenu,
-                nombre: item.subMenu,
-                url: `/${item.menu.toLowerCase().replace(/ /g, '-')}/${item.subMenu.toLowerCase().replace(/ /g, '-')}`
+                nombre: item.subMenu,                
+                url: `${item.url}`
             });
+
         });
 
         return Array.from(menuMap.values()).sort((a, b) => a.orden - b.orden);

@@ -24,10 +24,10 @@ const Login = () => {
         
         console.log('Login URL:', URL_APIS.LOGIN);
 		
-		if(username !== '' || password !== '') {
+		/*if(username !== '' || password !== '') {
             iniciarSession(request);
             navigate("/");
-        }       
+        } */      
         
         try {
             const response = await fetch(URL_APIS.LOGIN, {
