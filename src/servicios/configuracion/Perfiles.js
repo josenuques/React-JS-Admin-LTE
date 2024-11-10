@@ -2,7 +2,7 @@ import { URL_APIS } from '../../general/apiConfig';
 
 export const obtenerPerfiles = async (idEmpresa) => {
     try {
-        const response = await fetch(`${URL_APIS.PROFILES_LIST}/${idEmpresa}`, {
+        const response = await fetch(`${URL_APIS.PROFILES_LIST}?idEmpresa=${idEmpresa}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -84,17 +84,14 @@ export const GuardarPerfil = async (idEmpresa, idPerfil) => {
 
 export const EliminarPerfil = async (idEmpresa, idPerfil) => {
     try {
-        const response = await fetch(URL_APIS.PROFILES_DELETE, {
+
+        const response = await fetch(`${URL_APIS.PROFILES_DELETE}?idPerfil=${idPerfil}&idEmpresa=${idEmpresa}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                idEmpresa: idEmpresa,
-                idPerfil: idPerfil
-            })
+            }
         });
-
+        
         if (!response.ok) {
             throw new Error('Error al eliminar el perfil');
         }

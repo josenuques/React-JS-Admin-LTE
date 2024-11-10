@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -9,16 +9,21 @@ import { Dropdown } from 'primereact/dropdown';
 import { ToggleButton } from 'primereact/togglebutton';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
+import { UserContext } from '../../context/UserProvider';
 import classNames from 'classnames';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { ListarUsuarios, GuardarUsuario, EliminarUsuario, usuarioModelo } from '../../servicios/configuracion/Usuarios';
+import { obtenerPerfiles } from '../../servicios/configuracion/Perfiles';
 
 const Usuarios = () => {
+    const { user } = useContext(UserContext);
     const [usuarios, setUsuarios] = useState(null);
+    const [perfiles, setPerfiles] = useState([]);
     const [usuarioDialog, setUsuarioDialog] = useState(false);
     const [deleteUsuarioDialog, setDeleteUsuarioDialog] = useState(false);
-    const [usuario, setUsuario] = useState(null);
+    const [usuario, setUsuario] = useState(usuarioModelo);
     const [selectedUsuarios, setSelectedUsuarios] = useState(null);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState(null);
@@ -26,23 +31,36 @@ const Usuarios = () => {
     const dt = useRef(null);
 
     useEffect(() => {
-        setUsuarios([
-            { id: 1, nombre: 'Juan Pérez', email: 'juan@example.com', rol: 'Admin', clave: '', estado: 'Activo' },
-            { id: 2, nombre: 'María García', email: 'maria@example.com', rol: 'Usuario', clave: '', estado: 'Inactivo' },
-            { id: 3, nombre: 'Carlos López', email: 'carlos@example.com', rol: 'Usuario', clave: '', estado: 'Activo' },
-            { id: 4, nombre: 'Ana Martínez', email: 'ana@example.com', rol: 'Admin', clave: '', estado: 'Activo' },
-            { id: 5, nombre: 'Pedro Sánchez', email: 'pedro@example.com', rol: 'Usuario', clave: '', estado: 'Inactivo' },
-        ]);
+        cargarUsuarios();
+        cargarPerfiles();
     }, []);
+
+    const cargarUsuarios = async () => {
+        try {
+            const data = await ListarUsuarios(user.idempresa);
+            setUsuarios(data);
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Error al cargar usuarios', life: 3000 });
+        }
+    };
+
+    const cargarPerfiles = async () => {
+        try {
+            const data = await obtenerPerfiles(user.idempresa);
+            const perfilesFormateados = data.map(p => ({
+                label: p.descripcion,
+                value: p.id
+            }));
+            setPerfiles(perfilesFormateados);
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Error al cargar perfiles', life: 3000 });
+        }
+    };
 
     const openNew = () => {
         setUsuario({
-            id: null,
-            nombre: '',
-            email: '',
-            rol: '',
-            clave: '',
-            estado: 'Activo'
+            ...usuarioModelo,
+            idempresa: user.idempresa
         });
         setSubmitted(false);
         setUsuarioDialog(true);
@@ -57,31 +75,36 @@ const Usuarios = () => {
         setDeleteUsuarioDialog(false);
     };
 
-    const saveUsuario = () => {
+    const saveUsuario = async () => {
         setSubmitted(true);
 
-        if (usuario.nombre.trim() && usuario.email.trim() && usuario.clave.trim()) {
-            let _usuarios = [...usuarios];
-            let _usuario = {...usuario};
-            if (usuario.id) {
-                const index = findIndexById(usuario.id);
-                _usuarios[index] = _usuario;
-                toast.current.show({ severity: 'success', summary: 'Successful', detail: 'Usuario actualizado', life: 3000 });
+        if (usuario.nombres.trim() && usuario.correo.trim()) {
+            try {
+                const response = await GuardarUsuario(usuario);
+                if (response) {
+                    toast.current.show({ 
+                        severity: 'success', 
+                        summary: 'Exitoso', 
+                        detail: usuario.id ? 'Usuario actualizado' : 'Usuario creado', 
+                        life: 3000 
+                    });
+                    await cargarUsuarios();
+                    setUsuarioDialog(false);
+                    setUsuario(usuarioModelo);
+                }
+            } catch (error) {
+                toast.current.show({ 
+                    severity: 'error', 
+                    summary: 'Error', 
+                    detail: 'Error al guardar el usuario', 
+                    life: 3000 
+                });
             }
-            else {
-                _usuario.id = createId();
-                _usuarios.push(_usuario);
-                toast.current.show({ severity: 'success', summary: 'Successful', detail: 'Usuario creado', life: 3000 });
-            }
-
-            setUsuarios(_usuarios);
-            setUsuarioDialog(false);
-            setUsuario(null);
         }
     };
 
     const editUsuario = (usuario) => {
-        setUsuario({...usuario, clave: ''});
+        setUsuario({ ...usuario });
         setUsuarioDialog(true);
     };
 
@@ -90,32 +113,16 @@ const Usuarios = () => {
         setDeleteUsuarioDialog(true);
     };
 
-    const deleteUsuario = () => {
-        let _usuarios = usuarios.filter(val => val.id !== usuario.id);
-        setUsuarios(_usuarios);
-        setDeleteUsuarioDialog(false);
-        setUsuario(null);
-        toast.current.show({ severity: 'success', summary: 'Successful', detail: 'Usuario eliminado', life: 3000 });
-    };
-
-    const findIndexById = (id) => {
-        let index = -1;
-        for (let i = 0; i < usuarios.length; i++) {
-            if (usuarios[i].id === id) {
-                index = i;
-                break;
-            }
+    const deleteUsuario = async () => {
+        try {
+            await EliminarUsuario(user.idempresa, usuario.id);
+            await cargarUsuarios();
+            setDeleteUsuarioDialog(false);
+            setUsuario(usuarioModelo);
+            toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Usuario eliminado', life: 3000 });
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Error al eliminar el usuario', life: 3000 });
         }
-        return index;
-    };
-
-    const createId = () => {
-        let id = '';
-        let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 5; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
     };
 
     const exportExcel = () => {
@@ -128,9 +135,15 @@ const Usuarios = () => {
 
     const exportPDF = () => {
         const doc = new jsPDF('p', 'pt');
-        const exportData = usuarios.map(({ clave, ...rest }) => Object.values(rest));
+        const exportData = usuarios.map(({ clave, ...rest }) => [
+            rest.nombres,
+            rest.apellidos,
+            rest.correo,
+            rest.perfil,
+            rest.estado ? 'Activo' : 'Inactivo'
+        ]);
         doc.autoTable({
-            head: [['ID', 'Nombre', 'Email', 'Rol', 'Estado']],
+            head: [['Nombres', 'Apellidos', 'Correo', 'Perfil', 'Estado']],
             body: exportData,
         });
         doc.save('usuarios.pdf');
@@ -140,12 +153,18 @@ const Usuarios = () => {
         const val = (e.target && e.target.value) || '';
         let _usuario = {...usuario};
         _usuario[`${name}`] = val;
+
+        if (name === 'nombres' || name === 'apellidos') {
+            _usuario.nombrecompleto = `${_usuario.nombres} ${_usuario.apellidos}`.trim();
+        }
+
         setUsuario(_usuario);
     };
 
     const onEstadoChange = (e) => {
         let _usuario = {...usuario};
-        _usuario.estado = e.value ? 'Activo' : 'Inactivo';
+        _usuario.estado = e.value;
+        _usuario.estadotexto = e.value ? 'Activo' : 'Inactivo';
         setUsuario(_usuario);
     };
 
@@ -221,11 +240,11 @@ const Usuarios = () => {
                     header={header}
                     responsiveLayout="scroll"
                 >
-                    <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} exportable={false}></Column>
-                    <Column field="nombre" header="Nombre" sortable style={{ minWidth: '16rem' }}></Column>
-                    <Column field="email" header="Email" sortable style={{ minWidth: '20rem' }}></Column>
-                    <Column field="rol" header="Rol" sortable style={{ minWidth: '10rem' }}></Column>
-                    <Column field="estado" header="Estado" sortable style={{ minWidth: '8rem' }}></Column>
+                    <Column field="nombres" header="Nombres" sortable style={{ minWidth: '12rem' }}></Column>
+                    <Column field="apellidos" header="Apellidos" sortable style={{ minWidth: '12rem' }}></Column>
+                    <Column field="correo" header="Correo" sortable style={{ minWidth: '12rem' }}></Column>
+                    <Column field="perfil" header="Perfil" sortable style={{ minWidth: '10rem' }}></Column>
+                    <Column field="estadotexto" header="Estado" sortable style={{ minWidth: '8rem' }}></Column>
                     <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: '8rem' }}></Column>
                 </DataTable>
             </div>
@@ -240,53 +259,68 @@ const Usuarios = () => {
                 onHide={hideDialog}
             >
                 <div className="field">
-                    <label htmlFor="nombre">Nombre</label>
+                    <label htmlFor="nombres">Nombres</label>
                     <InputText 
-                        id="nombre" 
-                        value={usuario?.nombre} 
-                        onChange={(e) => onInputChange(e, 'nombre')} 
+                        id="nombres" 
+                        value={usuario.nombres} 
+                        onChange={(e) => onInputChange(e, 'nombres')} 
                         required 
                         autoFocus 
-                        className={classNames({ 'p-invalid': submitted && !usuario?.nombre })} 
+                        className={classNames({ 'p-invalid': submitted && !usuario.nombres })} 
                     />
-                    {submitted && !usuario?.nombre && <small className="p-error">El nombre es requerido.</small>}
+                    {submitted && !usuario.nombres && <small className="p-error">El nombre es requerido.</small>}
                 </div>
                 <div className="field">
-                    <label htmlFor="email">Email</label>
+                    <label htmlFor="apellidos">Apellidos</label>
                     <InputText 
-                        id="email" 
-                        value={usuario?.email} 
-                        onChange={(e) => onInputChange(e, 'email')} 
+                        id="apellidos" 
+                        value={usuario.apellidos} 
+                        onChange={(e) => onInputChange(e, 'apellidos')} 
                         required 
-                        className={classNames({ 'p-invalid': submitted && !usuario?.email })} 
+                        className={classNames({ 'p-invalid': submitted && !usuario.apellidos })} 
                     />
-                    {submitted && !usuario?.email && <small className="p-error">El email es requerido.</small>}
+                    {submitted && !usuario.apellidos && <small className="p-error">El apellido es requerido.</small>}
+                </div>
+                <div className="field">
+                    <label htmlFor="correo">Correo</label>
+                    <InputText 
+                        id="correo" 
+                        value={usuario.correo} 
+                        onChange={(e) => onInputChange(e, 'correo')} 
+                        required 
+                        className={classNames({ 'p-invalid': submitted && !usuario.correo })} 
+                    />
+                    {submitted && !usuario.correo && <small className="p-error">El correo es requerido.</small>}
                 </div>
                 <div className="field">
                     <label htmlFor="clave">Contraseña</label>
                     <Password
                         id="clave"
-                        value={usuario?.clave}
+                        value={usuario.clave}
                         onChange={(e) => onInputChange(e, 'clave')}
-                        required
+                        required={!usuario.id}
                         toggleMask
-                        className={classNames({ 'p-invalid': submitted && !usuario?.clave })}
+                        className={classNames({ 'p-invalid': submitted && !usuario.clave && !usuario.id })}
                         feedback={false}
                     />
-                    {submitted && !usuario?.clave && <small className="p-error">La contraseña es requerida.</small>}
+                    {submitted && !usuario.clave && !usuario.id && <small className="p-error">La contraseña es requerida.</small>}
                 </div>
                 <div className="field">
-                    <label htmlFor="rol">Rol</label>
-                    <InputText 
-                        id="rol" 
-                        value={usuario?.rol} 
-                        onChange={(e) => onInputChange(e, 'rol')} 
+                    <label htmlFor="idperfil">Perfil</label>
+                    <Dropdown
+                        id="idperfil"
+                        value={usuario.idperfil}
+                        options={perfiles}
+                        onChange={(e) => onInputChange(e, 'idperfil')}
+                        placeholder="Seleccione un perfil"
+                        className={classNames({ 'p-invalid': submitted && !usuario.idperfil })}
                     />
+                    {submitted && !usuario.idperfil && <small className="p-error">El perfil es requerido.</small>}
                 </div>
                 <div className="field">
                     <label htmlFor="estado">Estado</label>
                     <ToggleButton 
-                        checked={usuario?.estado === 'Activo'} 
+                        checked={usuario.estado} 
                         onChange={onEstadoChange} 
                         onLabel="Activo" 
                         offLabel="Inactivo" 
@@ -306,7 +340,7 @@ const Usuarios = () => {
             >
                 <div className="confirmation-content">
                     <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem'}} />
-                    {usuario && <span>¿Está seguro de que desea eliminar a <b>{usuario.nombre}</b>?</span>}
+                    {usuario && <span>¿Está seguro de que desea eliminar a <b>{usuario.nombrecompleto}</b>?</span>}
                 </div>
             </Dialog>
         </div>

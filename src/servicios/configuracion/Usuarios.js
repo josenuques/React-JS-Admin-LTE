@@ -27,7 +27,7 @@ export const GuardarUsuario = async (usuario) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            },
+            },            
             body: JSON.stringify(usuario)
         });
 
@@ -45,17 +45,14 @@ export const GuardarUsuario = async (usuario) => {
 
 export const EliminarUsuario = async (idEmpresa, idUsuario) => {
     try {
-        const response = await fetch(URL_APIS.USERS_DELETE, {
+
+        const response = await fetch(`${URL_APIS.USERS_DELETE}?idEmpresa=${idEmpresa}&idUsuario=${idUsuario}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                idEmpresa: idEmpresa,
-                idUsuario: idUsuario
-            })
+            }
         });
-
+       
         if (!response.ok) {
             throw new Error('Error al eliminar el usuario');
         }
@@ -78,7 +75,7 @@ export const usuarioModelo = {
     clave: "",
     idperfil: 0,
     perfil: "",
-    idNivelSeguridad: 0,
+    idNivelSeguridad: 1,
     estado: true,
     estadotexto: "",
     menu: null
