@@ -21,9 +21,9 @@ export const empresaModelo = {
     estado: false
 };
 
-export const ConsultarEmpresa = async (idEmpresa) => {
+export const ConsultarEmpresa = async () => {
     try {
-        const response = await fetch(`${URL_APIS.COMPANY_GET}?idEmpresa=${idEmpresa}`, {
+        const response = await fetch(URL_APIS.COMPANY_GET, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'

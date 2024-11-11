@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -9,72 +9,17 @@ import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { FileUpload } from 'primereact/fileupload';
+import { UserContext } from '../../context/UserProvider';
 import classNames from 'classnames';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { empresaModelo, ConsultarEmpresa, GuardarEmpresa } from '../../servicios/configuracion/Empresa';
+import { ListarTiposEmpresa, ListarProvincias, ListarCiudades } from '../../servicios/general/General';
 
 const Empresas = () => {
-    const [empresas, setEmpresas] = useState([
-        {
-            id: 1,
-            nombreComercial: "DISTRIBUIDORA GMC",
-            razonSocial: "MORENO CORDOVA GIOVANNY MANUEL",
-            identificacion: "0908670441001",
-            idTipoEmpresa: 1,
-            tipoEmpresa: "Personal Natural (Contabiliza con RUC)",
-            idProvincia: 1,
-            provincia: "GUAYAS",
-            idCiudad: 1,
-            ciudad: "GUAYAQUIL",
-            direccion: "Cdla 9 de Octubre Calle: Sexta Num 400 interseccion calle Tercera Referencia: FRENTE A",
-            telefono: "0997957060",
-            correo: "gmmoreno@hotmail.es",
-            inicioActividad: "2002-03-06",
-            inicioActividadTexto: "06/03/2002",
-            logoRuta: "",
-            estado: true
-        },
-        {
-            id: 2,
-            nombreComercial: "FARMACIA CRUZ AZUL",
-            razonSocial: "FARMACIAS Y COMISARIATOS DE MEDICINAS SA FARCOMED",
-            identificacion: "1790951542001",
-            idTipoEmpresa: 2,
-            tipoEmpresa: "Persona Jurídica",
-            idProvincia: 1,
-            provincia: "GUAYAS",
-            idCiudad: 1,
-            ciudad: "GUAYAQUIL",
-            direccion: "Av. Francisco de Orellana y Justino Cornejo",
-            telefono: "042284505",
-            correo: "info@cruazul.com.ec",
-            inicioActividad: "1990-05-15",
-            inicioActividadTexto: "15/05/1990",
-            logoRuta: "",
-            estado: true
-        },
-        {
-            id: 3,
-            nombreComercial: "SANA SANA",
-            razonSocial: "ECONOFARM S.A.",
-            identificacion: "1791715772001",
-            idTipoEmpresa: 2,
-            tipoEmpresa: "Persona Jurídica",
-            idProvincia: 2,
-            provincia: "PICHINCHA",
-            idCiudad: 2,
-            ciudad: "QUITO",
-            direccion: "Av. 10 de Agosto N37-288 y Villalengua",
-            telefono: "023998200",
-            correo: "info@sanasana.com.ec",
-            inicioActividad: "1995-08-20",
-            inicioActividadTexto: "20/08/1995",
-            logoRuta: "",
-            estado: true
-        }
-    ]);
+    const { user } = useContext(UserContext);
+    const [empresas, setEmpresas] = useState([]);
     const [empresaDialog, setEmpresaDialog] = useState(false);
     const [deleteEmpresaDialog, setDeleteEmpresaDialog] = useState(false);
     const [empresa, setEmpresa] = useState(empresaModelo);
@@ -82,30 +27,102 @@ const Empresas = () => {
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState(null);
     const [logoFile, setLogoFile] = useState(null);
+    const [tiposEmpresa, setTiposEmpresa] = useState([]);
+    const [provincias, setProvincias] = useState([]);
+    const [ciudades, setCiudades] = useState([]);
     const toast = useRef(null);
     const dt = useRef(null);
     const fileUploadRef = useRef(null);
 
-    const tiposEmpresa = [
-        { label: 'Personal Natural (Contabiliza con RUC)', value: 1 },
-        { label: 'Persona Jurídica', value: 2 }
-    ];
+    useEffect(() => {
+        cargarEmpresas();
+        cargarTiposEmpresa();
+        cargarProvincias();
+    }, []);
 
-    const provincias = [
-        { label: 'GUAYAS', value: 1 },
-        { label: 'PICHINCHA', value: 2 }
-    ];
+    useEffect(() => {
+        if (empresa.idProvincia) {
+            cargarCiudades(empresa.idProvincia);
+        }
+    }, [empresa.idProvincia]);
 
-    const ciudades = [
-        { label: 'GUAYAQUIL', value: 1 },
-        { label: 'QUITO', value: 2 }
-    ];
+    const cargarEmpresas = async () => {
+        try {
+            if (user?.idempresa) {
+                const data = await ConsultarEmpresa();
+                setEmpresas(Array.isArray(data) ? data : [data]);
+            }
+        } catch (error) {
+            toast.current.show({ 
+                severity: 'error', 
+                summary: 'Error', 
+                detail: 'Error al cargar empresas', 
+                life: 3000 
+            });
+        }
+    };
 
-    // Remove the useEffect that fetches data since we're using static data now
+    const cargarTiposEmpresa = async () => {
+        try {
+            const data = await ListarTiposEmpresa();
+            const tiposFormateados = data.map(tipo => ({
+                label: tipo.descripcion,
+                value: tipo.id
+            }));
+            setTiposEmpresa(tiposFormateados);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al cargar tipos de empresa',
+                life: 3000
+            });
+        }
+    };
+
+    const cargarProvincias = async () => {
+        try {
+            const data = await ListarProvincias();
+            const provinciasFormateadas = data.map(provincia => ({
+                label: provincia.nombre,
+                value: provincia.id
+            }));
+            setProvincias(provinciasFormateadas);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al cargar provincias',
+                life: 3000
+            });
+        }
+    };
+
+    const cargarCiudades = async (idProvincia) => {
+        try {
+            const data = await ListarCiudades(idProvincia);
+            const ciudadesFormateadas = data.map(ciudad => ({
+                label: ciudad.ciudadtexto,
+                value: ciudad.id
+            }));
+            setCiudades(ciudadesFormateadas);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al cargar ciudades',
+                life: 3000
+            });
+        }
+    };
 
     const openNew = () => {
-        setEmpresa(empresaModelo);
+        setEmpresa({
+            ...empresaModelo,
+            idempresa: user?.idempresa
+        });
         setLogoFile(null);
+        setCiudades([]);
         setSubmitted(false);
         setEmpresaDialog(true);
     };
@@ -123,27 +140,35 @@ const Empresas = () => {
         setSubmitted(true);
 
         if (empresa.nombreComercial.trim()) {
-            let _empresas = [...empresas];
-            let _empresa = {...empresa};
-            
-            if (empresa.id) {
-                const index = _empresas.findIndex(e => e.id === empresa.id);
-                _empresas[index] = _empresa;
-                toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Empresa actualizada', life: 3000 });
-            } else {
-                _empresa.id = _empresas.length + 1;
-                _empresas.push(_empresa);
-                toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Empresa creada', life: 3000 });
+            try {
+                const response = await GuardarEmpresa(empresa, logoFile);
+                if (response) {
+                    toast.current.show({ 
+                        severity: 'success', 
+                        summary: 'Exitoso', 
+                        detail: empresa.id ? 'Empresa actualizada' : 'Empresa creada', 
+                        life: 3000 
+                    });
+                    await cargarEmpresas();
+                    setEmpresaDialog(false);
+                    setEmpresa(empresaModelo);
+                }
+            } catch (error) {
+                toast.current.show({ 
+                    severity: 'error', 
+                    summary: 'Error', 
+                    detail: 'Error al guardar la empresa', 
+                    life: 3000 
+                });
             }
-
-            setEmpresas(_empresas);
-            setEmpresaDialog(false);
-            setEmpresa(empresaModelo);
         }
     };
 
     const editEmpresa = (empresa) => {
         setEmpresa({ ...empresa });
+        if (empresa.idProvincia) {
+            cargarCiudades(empresa.idProvincia);
+        }
         setEmpresaDialog(true);
     };
 
@@ -365,6 +390,7 @@ const Empresas = () => {
                                 options={ciudades}
                                 onChange={(e) => onInputChange(e, 'idCiudad')}
                                 placeholder="Seleccione una ciudad"
+                                disabled={!empresa.idProvincia}
                             />
                         </div>
                         <div className="field">
