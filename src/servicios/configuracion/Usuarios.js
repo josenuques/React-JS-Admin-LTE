@@ -34,9 +34,8 @@ export const GuardarUsuario = async (usuario) => {
         if (!response.ok) {
             throw new Error('Error al guardar el usuario');
         }
-
-        const data = await response.json();
-        return data;
+        
+        return response.ok;
     } catch (error) {
         console.error('Error:', error);
         throw error;
