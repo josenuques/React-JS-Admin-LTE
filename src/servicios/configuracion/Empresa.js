@@ -47,7 +47,7 @@ export const GuardarEmpresa = async (empresa, imagenArchivo) => {
         const formData = new FormData();
         
         // Agregar los datos de la empresa como JSON string
-        formData.append('oEmpresa', JSON.stringify(empresa));
+        formData.append('Empresa', JSON.stringify(empresa));
         
         // Agregar el archivo de imagen si existe
         if (imagenArchivo) {
