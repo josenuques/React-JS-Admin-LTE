@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -8,78 +8,85 @@ import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
+import { UserContext } from '../../context/UserProvider';
 import classNames from 'classnames';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { obtenerPerfiles, ListarPermisos, GuardarPerfil, EliminarPerfil, perfilModelo, ListarComboNivelesSeguridad } from '../../servicios/configuracion/Perfiles';
 
 const Perfiles = () => {
+    const { user } = useContext(UserContext);
     const [perfiles, setPerfiles] = useState(null);
     const [perfilDialog, setPerfilDialog] = useState(false);
     const [deletePerfilDialog, setDeletePerfilDialog] = useState(false);
-    const [perfil, setPerfil] = useState(null);
+    const [perfil, setPerfil] = useState(perfilModelo);
     const [selectedPerfiles, setSelectedPerfiles] = useState(null);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState(null);
     const [permisos, setPermisos] = useState([]);
+    const [nivelesSeguridad, setNivelesSeguridad] = useState([]);
     const toast = useRef(null);
     const dt = useRef(null);
 
-    const nivelesSeguridad = [
-        { label: 'Nivel 1', value: 1 },
-        { label: 'Nivel 2', value: 2 },
-        { label: 'Nivel 3', value: 3 }
-    ];
-
     useEffect(() => {
-        // Simulated API data
-        setPerfiles([
-            {
-                id: 1,
-                descripcion: "Administrador",
-                nivelSeguridad: 3,
-                estado: true
-            },
-            {
-                id: 2,
-                descripcion: "Químico Farmacéutico",
-                nivelSeguridad: 2,
-                estado: true
-            },
-            {
-                id: 3,
-                descripcion: "Digitador",
-                nivelSeguridad: 1,
-                estado: true
-            }
-        ]);
-
-        // Simulated permissions data
-        setPermisos([
-            { codigo: 9, modulo: "Ingresos", opcion: "Orden de Compra", selected: false },
-            { codigo: 10, modulo: "Ingresos", opcion: "Inspección Vehicular", selected: false },
-            { codigo: 11, modulo: "Ingresos", opcion: "Control y Revisión", selected: false },
-            { codigo: 30, modulo: "Consultas Impresion, Edición y Aprobación", opcion: "Ordenes Compra", selected: false },
-            { codigo: 38, modulo: "Consultas Impresion, Edición y Aprobación", opcion: "Controles Egresos", selected: false },
-            { codigo: 34, modulo: "Consultas Impresion, Edición y Aprobación", opcion: "Ordenes Salida", selected: false },
-            { codigo: 36, modulo: "Consultas Impresion, Edición y Aprobación", opcion: "Inspecciones Egresos", selected: false },
-            { codigo: 44, modulo: "Consultas Impresion, Edición y Aprobación", opcion: "Egresos X Devoluciones", selected: false },
-            { codigo: 45, modulo: "Consultas Impresion, Edición y Aprobación", opcion: "Ingresos X Devoluciones", selected: false },
-            { codigo: 41, modulo: "Trazabilidad", opcion: "Trazabilidad por lotes", selected: false },
-            { codigo: 42, modulo: "Trazabilidad", opcion: "Tablas de procesos", selected: false },
-            { codigo: 48, modulo: "Reportes ARSA", opcion: "Reportes Formato ARSA", selected: false }
-        ]);
+        cargarPerfiles();
+        cargarNivelesSeguridad();
     }, []);
 
-    const openNew = () => {
+    const cargarPerfiles = async () => {
+        try {
+            const data = await obtenerPerfiles(user.idempresa);
+            setPerfiles(data);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al cargar perfiles',
+                life: 3000
+            });
+        }
+    };
+
+    const cargarNivelesSeguridad = async () => {
+        try {
+            const data = await ListarComboNivelesSeguridad();
+            const nivelesFormateados = data.map(nivel => ({
+                label: nivel.descripcion,
+                value: nivel.idNivel,
+                ...nivel
+            }));
+            setNivelesSeguridad(nivelesFormateados);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al cargar niveles de seguridad',
+                life: 3000
+            });
+        }
+    };
+
+    const cargarPermisos = async (idPerfil) => {
+        try {
+            const data = await ListarPermisos(idPerfil, user.idempresa);
+            setPermisos(data);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al cargar permisos',
+                life: 3000
+            });
+        }
+    };
+
+    const openNew = async () => {
         setPerfil({
-            id: 0,
-            descripcion: '',
-            nivelSeguridad: 1,
-            estado: true
-        });
-        // Reset all permissions
-        setPermisos(permisos.map(p => ({ ...p, selected: false })));
+            ...perfilModelo,
+            idempresa: user.idempresa
+        });        
+        await cargarPermisos(0);
         setSubmitted(false);
         setPerfilDialog(true);
     };
@@ -93,32 +100,53 @@ const Perfiles = () => {
         setDeletePerfilDialog(false);
     };
 
-    const savePerfil = () => {
+    const savePerfil = async () => {
         setSubmitted(true);
 
         if (perfil.descripcion.trim()) {
-            let _perfiles = [...perfiles];
-            let _perfil = {...perfil};
-            
-            if (perfil.id) {
-                const index = findIndexById(perfil.id);
-                _perfiles[index] = _perfil;
-                toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Perfil actualizado', life: 3000 });
-            } else {
-                _perfil.id = createId();
-                _perfiles.push(_perfil);
-                toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Perfil creado', life: 3000 });
-            }
+            try {
+                const perfilData = {
+                    id: perfil.id,
+                    idempresa: user.idempresa,
+                    idNivelSeguridad: perfil.idNivelSeguridad,
+                    descripcion: perfil.descripcion,
+                    idNivel: perfil.idNivel,
+                    nivel: perfil.nivel,
+                    estado: perfil.estado,
+                    permisos: permisos.map(p => ({
+                        idEmpresa: user.idempresa,
+                        idPerfil: perfil.id,
+                        idOpcion: p.idSubMenu,
+                        activo: p.activo ? 1 : 0
+                    }))
+                };
 
-            setPerfiles(_perfiles);
-            setPerfilDialog(false);
-            setPerfil(null);
+                const response = await GuardarPerfil(perfilData);
+                if (response) {
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Exitoso',
+                        detail: perfil.id ? 'Perfil actualizado' : 'Perfil creado',
+                        life: 3000
+                    });
+                    await cargarPerfiles();
+                    setPerfilDialog(false);
+                    setPerfil(perfilModelo);
+                }
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Error al guardar el perfil',
+                    life: 3000
+                });
+            }
         }
     };
 
-    const editPerfil = (perfil) => {
-        setPerfil({...perfil});
-        // Simulated API call to get permissions for this profile
+    const editPerfil = async (perfil) => {
+        setPerfil({ ...perfil });
+        await cargarPermisos(perfil.id);
         setPerfilDialog(true);
     };
 
@@ -127,27 +155,26 @@ const Perfiles = () => {
         setDeletePerfilDialog(true);
     };
 
-    const deletePerfil = () => {
-        let _perfiles = perfiles.filter(val => val.id !== perfil.id);
-        setPerfiles(_perfiles);
-        setDeletePerfilDialog(false);
-        setPerfil(null);
-        toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Perfil eliminado', life: 3000 });
-    };
-
-    const findIndexById = (id) => {
-        let index = -1;
-        for (let i = 0; i < perfiles.length; i++) {
-            if (perfiles[i].id === id) {
-                index = i;
-                break;
-            }
+    const deletePerfil = async () => {
+        try {
+            await EliminarPerfil(user.idempresa, perfil.id);
+            await cargarPerfiles();
+            setDeletePerfilDialog(false);
+            setPerfil(perfilModelo);
+            toast.current.show({
+                severity: 'success',
+                summary: 'Exitoso',
+                detail: 'Perfil eliminado',
+                life: 3000
+            });
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Error al eliminar el perfil',
+                life: 3000
+            });
         }
-        return index;
-    };
-
-    const createId = () => {
-        return Math.max(...perfiles.map(p => p.id)) + 1;
     };
 
     const exportExcel = () => {
@@ -164,7 +191,7 @@ const Perfiles = () => {
             body: perfiles.map(perfil => [
                 perfil.id,
                 perfil.descripcion,
-                `Nivel ${perfil.nivelSeguridad}`,
+                perfil.nivel,
                 perfil.estado ? 'Activo' : 'Inactivo'
             ]),
         });
@@ -175,12 +202,22 @@ const Perfiles = () => {
         const val = (e.target && e.target.value) || '';
         let _perfil = {...perfil};
         _perfil[`${name}`] = val;
+
+        if (name === 'idNivel') {
+            const nivelSeleccionado = nivelesSeguridad.find(n => n.value === val);
+            if (nivelSeleccionado) {
+                _perfil.nivel = nivelSeleccionado.descripcion;
+                _perfil.idNivelSeguridad = nivelSeleccionado.idNivel;
+            }
+        }
+
         setPerfil(_perfil);
     };
 
-    const onPermissionChange = (e, codigo) => {
+    const onPermissionChange = (e, rowData) => {
+        const checked = e.checked;
         let _permisos = permisos.map(p => 
-            p.codigo === codigo ? { ...p, selected: e.checked } : p
+            p.idSubMenu === rowData.idSubMenu ? { ...p, activo: checked } : p
         );
         setPermisos(_permisos);
     };
@@ -258,7 +295,7 @@ const Perfiles = () => {
                     responsiveLayout="scroll"
                 >
                     <Column field="descripcion" header="Descripción" sortable style={{ minWidth: '16rem' }}></Column>
-                    <Column field="nivelSeguridad" header="Nivel Seguridad" body={(rowData) => `Nivel ${rowData.nivelSeguridad}`} sortable style={{ minWidth: '10rem' }}></Column>
+                    <Column field="nivel" header="Nivel Seguridad" sortable style={{ minWidth: '10rem' }}></Column>
                     <Column field="estado" header="Estado" body={(rowData) => rowData.estado ? 'Activo' : 'Inactivo'} sortable style={{ minWidth: '8rem' }}></Column>
                     <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: '8rem' }}></Column>
                 </DataTable>
@@ -290,12 +327,12 @@ const Perfiles = () => {
                     </div>
                     <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="nivelSeguridad">Nivel Seguridad:</label>
+                            <label htmlFor="idNivel">Nivel Seguridad:</label>
                             <Dropdown
-                                id="nivelSeguridad"
-                                value={perfil?.nivelSeguridad}
+                                id="idNivel"
+                                value={perfil?.idNivel}
                                 options={nivelesSeguridad}
-                                onChange={(e) => onInputChange(e, 'nivelSeguridad')}
+                                onChange={(e) => onInputChange(e, 'idNivel')}
                                 placeholder="Seleccione un nivel"
                             />
                         </div>
@@ -307,15 +344,15 @@ const Perfiles = () => {
                     <div className="grid">
                         <div className="col-12">
                             <DataTable value={permisos} scrollable scrollHeight="400px">
-                                <Column field="codigo" header="Código" style={{ width: '100px' }}></Column>
-                                <Column field="modulo" header="Módulo" style={{ width: '300px' }}></Column>
-                                <Column field="opcion" header="Opción" style={{ width: '300px' }}></Column>
+                                <Column field="idSubMenu" header="Código" style={{ width: '100px' }}></Column>
+                                <Column field="menu" header="Módulo" style={{ width: '300px' }}></Column>
+                                <Column field="subMenu" header="Opción" style={{ width: '300px' }}></Column>
                                 <Column
                                     style={{ width: '100px' }}
                                     body={(rowData) => (
                                         <Checkbox
-                                            checked={rowData.selected}
-                                            onChange={(e) => onPermissionChange(e, rowData.codigo)}
+                                            checked={rowData.activo}
+                                            onChange={(e) => onPermissionChange(e, rowData)}
                                         />
                                     )}
                                 ></Column>

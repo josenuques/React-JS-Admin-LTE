@@ -42,26 +42,30 @@ export const ListarPermisos = async (idPerfil, idEmpresa) => {
     }
 };
 
-export const GuardarPerfil = async (idEmpresa, idPerfil) => {
+export const ListarComboNivelesSeguridad = async () => {
     try {
-        const perfilData = {
-            id: idPerfil,
-            idempresa: idEmpresa,
-            idNivelSeguridad: 0,
-            descripcion: "",
-            idNivel: 0,
-            nivel: "",
-            estado: true,
-            permisos: [
-                {
-                    idEmpresa: idEmpresa,
-                    idPerfil: idPerfil,
-                    idOpcion: 0,
-                    activo: 0
-                }
-            ]
-        };
+        const response = await fetch(URL_APIS.PROFILES_SECURITY_LEVELS, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
 
+        if (!response.ok) {
+            throw new Error('Error al obtener los niveles de seguridad');
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error);
+        throw error;
+    }
+};
+
+
+export const GuardarPerfil = async (perfilData) => {
+    try {
         const response = await fetch(URL_APIS.PROFILES_SAVE, {
             method: 'POST',
             headers: {

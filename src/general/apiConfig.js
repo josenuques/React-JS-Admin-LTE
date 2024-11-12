@@ -10,6 +10,7 @@ export const URL_APIS = {
   PROFILES_SAVE: `${SERVER_BASE_URL}/Configuracion/GuardarPerfil`,
   PROFILES_DELETE: `${SERVER_BASE_URL}/Configuracion/EliminarPerfil`,
   PROFILES_PERMISSIONS: `${SERVER_BASE_URL}/Configuracion/ListarPermisos`,
+  PROFILES_SECURITY_LEVELS: `${SERVER_BASE_URL}/Configuracion/ListarComboNivelesSeguridad`,
   COMPANY_GET: `${SERVER_BASE_URL}/Configuracion/ConsultarEmpresa`,
   COMPANY_SAVE: `${SERVER_BASE_URL}/Configuracion/GuardarEmpresa`,
   TYPES_LIST: `${SERVER_BASE_URL}/General/ListarTiposEmpresa`,
