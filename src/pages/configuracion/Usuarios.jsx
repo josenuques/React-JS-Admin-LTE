@@ -10,6 +10,7 @@ import { ToggleButton } from 'primereact/togglebutton';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { UserContext } from '../../context/UserProvider';
+import LoadingOverlay from '../../components/LoadingOverlay';
 import classNames from 'classnames';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -27,6 +28,7 @@ const Usuarios = () => {
     const [selectedUsuarios, setSelectedUsuarios] = useState(null);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState(null);
+    const [loading, setLoading] = useState(false);
     const toast = useRef(null);
     const dt = useRef(null);
 
@@ -37,15 +39,19 @@ const Usuarios = () => {
 
     const cargarUsuarios = async () => {
         try {
+            setLoading(true);
             const data = await ListarUsuarios(user.idempresa);
             setUsuarios(data);
         } catch (error) {
             toast.current.show({ severity: 'error', summary: 'Error', detail: 'Error al cargar usuarios', life: 3000 });
+        } finally {
+            setLoading(false);
         }
     };
 
     const cargarPerfiles = async () => {
         try {
+            setLoading(true);
             const data = await obtenerPerfiles(user.idempresa);
             const perfilesFormateados = data.map(p => ({
                 label: p.descripcion,
@@ -54,6 +60,8 @@ const Usuarios = () => {
             setPerfiles(perfilesFormateados);
         } catch (error) {
             toast.current.show({ severity: 'error', summary: 'Error', detail: 'Error al cargar perfiles', life: 3000 });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -80,6 +88,7 @@ const Usuarios = () => {
 
         if (usuario.nombres.trim() && usuario.correo.trim()) {
             try {
+                setLoading(true);
                 const response = await GuardarUsuario(usuario);
                 if (response) {
                     toast.current.show({ 
@@ -99,6 +108,8 @@ const Usuarios = () => {
                     detail: 'Error al guardar el usuario', 
                     life: 3000 
                 });
+            } finally {
+                setLoading(false);
             }
         }
     };
@@ -115,6 +126,7 @@ const Usuarios = () => {
 
     const deleteUsuario = async () => {
         try {
+            setLoading(true);
             await EliminarUsuario(user.idempresa, usuario.id);
             await cargarUsuarios();
             setDeleteUsuarioDialog(false);
@@ -122,6 +134,8 @@ const Usuarios = () => {
             toast.current.show({ severity: 'success', summary: 'Exitoso', detail: 'Usuario eliminado', life: 3000 });
         } catch (error) {
             toast.current.show({ severity: 'error', summary: 'Error', detail: 'Error al eliminar el usuario', life: 3000 });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -206,20 +220,21 @@ const Usuarios = () => {
 
     const usuarioDialogFooter = (
         <React.Fragment>
-            <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} />
-            <Button label="Guardar" icon="pi pi-check" className="p-button-text" onClick={saveUsuario} />
+            <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} disabled={loading} />
+            <Button label="Guardar" icon="pi pi-check" className="p-button-text" onClick={saveUsuario} disabled={loading} />
         </React.Fragment>
     );
 
     const deleteUsuarioDialogFooter = (
         <React.Fragment>
-            <Button label="No" icon="pi pi-times" className="p-button-text" onClick={hideDeleteUsuarioDialog} />
-            <Button label="Sí" icon="pi pi-check" className="p-button-text" onClick={deleteUsuario} />
+            <Button label="No" icon="pi pi-times" className="p-button-text" onClick={hideDeleteUsuarioDialog} disabled={loading} />
+            <Button label="Sí" icon="pi pi-check" className="p-button-text" onClick={deleteUsuario} disabled={loading} />
         </React.Fragment>
     );
 
     return (
         <div className="datatable-crud-demo">
+            <LoadingOverlay visible={loading} />
             <Toast ref={toast} />
 
             <div className="card">
@@ -257,6 +272,7 @@ const Usuarios = () => {
                 className="p-fluid" 
                 footer={usuarioDialogFooter} 
                 onHide={hideDialog}
+                closable={!loading}
             >
                 <div className="field">
                     <label htmlFor="nombres">Nombres</label>
@@ -267,6 +283,7 @@ const Usuarios = () => {
                         required 
                         autoFocus 
                         className={classNames({ 'p-invalid': submitted && !usuario.nombres })} 
+                        disabled={loading}
                     />
                     {submitted && !usuario.nombres && <small className="p-error">El nombre es requerido.</small>}
                 </div>
@@ -278,6 +295,7 @@ const Usuarios = () => {
                         onChange={(e) => onInputChange(e, 'apellidos')} 
                         required 
                         className={classNames({ 'p-invalid': submitted && !usuario.apellidos })} 
+                        disabled={loading}
                     />
                     {submitted && !usuario.apellidos && <small className="p-error">El apellido es requerido.</small>}
                 </div>
@@ -289,6 +307,7 @@ const Usuarios = () => {
                         onChange={(e) => onInputChange(e, 'correo')} 
                         required 
                         className={classNames({ 'p-invalid': submitted && !usuario.correo })} 
+                        disabled={loading}
                     />
                     {submitted && !usuario.correo && <small className="p-error">El correo es requerido.</small>}
                 </div>
@@ -302,6 +321,7 @@ const Usuarios = () => {
                         toggleMask
                         className={classNames({ 'p-invalid': submitted && !usuario.clave && !usuario.id })}
                         feedback={false}
+                        disabled={loading}
                     />
                     {submitted && !usuario.clave && !usuario.id && <small className="p-error">La contraseña es requerida.</small>}
                 </div>
@@ -314,6 +334,7 @@ const Usuarios = () => {
                         onChange={(e) => onInputChange(e, 'idperfil')}
                         placeholder="Seleccione un perfil"
                         className={classNames({ 'p-invalid': submitted && !usuario.idperfil })}
+                        disabled={loading}
                     />
                     {submitted && !usuario.idperfil && <small className="p-error">El perfil es requerido.</small>}
                 </div>
@@ -325,7 +346,8 @@ const Usuarios = () => {
                         onLabel="Activo" 
                         offLabel="Inactivo" 
                         onIcon="pi pi-check" 
-                        offIcon="pi pi-times" 
+                        offIcon="pi pi-times"
+                        disabled={loading}
                     />
                 </div>
             </Dialog>
@@ -337,6 +359,7 @@ const Usuarios = () => {
                 modal 
                 footer={deleteUsuarioDialogFooter} 
                 onHide={hideDeleteUsuarioDialog}
+                closable={!loading}
             >
                 <div className="confirmation-content">
                     <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem'}} />
