@@ -9,6 +9,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { UserContext } from '../../context/UserProvider';
+import LoadingOverlay from '../../components/LoadingOverlay';
 import classNames from 'classnames';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -26,6 +27,7 @@ const Perfiles = () => {
     const [globalFilter, setGlobalFilter] = useState(null);
     const [permisos, setPermisos] = useState([]);
     const [nivelesSeguridad, setNivelesSeguridad] = useState([]);
+    const [loading, setLoading] = useState(false);
     const toast = useRef(null);
     const dt = useRef(null);
 
@@ -36,6 +38,7 @@ const Perfiles = () => {
 
     const cargarPerfiles = async () => {
         try {
+            setLoading(true);
             const data = await obtenerPerfiles(user.idempresa);
             setPerfiles(data);
         } catch (error) {
@@ -45,11 +48,14 @@ const Perfiles = () => {
                 detail: 'Error al cargar perfiles',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const cargarNivelesSeguridad = async () => {
         try {
+            setLoading(true);
             const data = await ListarComboNivelesSeguridad();
             const nivelesFormateados = data.map(nivel => ({
                 label: nivel.descripcion,
@@ -64,11 +70,14 @@ const Perfiles = () => {
                 detail: 'Error al cargar niveles de seguridad',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const cargarPermisos = async (idPerfil) => {
         try {
+            setLoading(true);
             const data = await ListarPermisos(idPerfil, user.idempresa);
             setPermisos(data);
         } catch (error) {
@@ -78,6 +87,8 @@ const Perfiles = () => {
                 detail: 'Error al cargar permisos',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -103,8 +114,9 @@ const Perfiles = () => {
     const savePerfil = async () => {
         setSubmitted(true);
 
-        if (perfil.descripcion.trim()) {
+        if (perfil.descripcion.trim() && perfil.idNivel) {
             try {
+                setLoading(true);
                 const perfilData = {
                     id: perfil.id,
                     idempresa: user.idempresa,
@@ -140,6 +152,8 @@ const Perfiles = () => {
                     detail: 'Error al guardar el perfil',
                     life: 3000
                 });
+            } finally {
+                setLoading(false);
             }
         }
     };
@@ -157,6 +171,7 @@ const Perfiles = () => {
 
     const deletePerfil = async () => {
         try {
+            setLoading(true);
             await EliminarPerfil(user.idempresa, perfil.id);
             await cargarPerfiles();
             setDeletePerfilDialog(false);
@@ -174,6 +189,8 @@ const Perfiles = () => {
                 detail: 'Error al eliminar el perfil',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -259,21 +276,22 @@ const Perfiles = () => {
     );
 
     const perfilDialogFooter = (
-        <div>
-            <Button label="Cerrar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} />
-            <Button label="Guardar" icon="pi pi-check" className="p-button-primary" onClick={savePerfil} />
-        </div>
+        <React.Fragment>
+            <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} disabled={loading} />
+            <Button label="Guardar" icon="pi pi-check" className="p-button-text" onClick={savePerfil} disabled={loading} />
+        </React.Fragment>
     );
 
     const deletePerfilDialogFooter = (
         <React.Fragment>
-            <Button label="No" icon="pi pi-times" className="p-button-text" onClick={hideDeletePerfilDialog} />
-            <Button label="Sí" icon="pi pi-check" className="p-button-text" onClick={deletePerfil} />
+            <Button label="No" icon="pi pi-times" className="p-button-text" onClick={hideDeletePerfilDialog} disabled={loading} />
+            <Button label="Sí" icon="pi pi-check" className="p-button-text" onClick={deletePerfil} disabled={loading} />
         </React.Fragment>
     );
 
     return (
         <div className="datatable-crud-demo">
+            <LoadingOverlay visible={loading} />
             <Toast ref={toast} />
 
             <div className="card">
@@ -309,6 +327,7 @@ const Perfiles = () => {
                 className="p-fluid"
                 footer={perfilDialogFooter}
                 onHide={hideDialog}
+                closable={!loading}
             >
                 <div className="grid">
                     <div className="col-12 md:col-6">
@@ -321,20 +340,24 @@ const Perfiles = () => {
                                 required
                                 autoFocus
                                 className={classNames({ 'p-invalid': submitted && !perfil?.descripcion })}
+                                disabled={loading}
                             />
                             {submitted && !perfil?.descripcion && <small className="p-error">La descripción es requerida.</small>}
                         </div>
                     </div>
                     <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="idNivel">Nivel Seguridad:</label>
+                            <label htmlFor="idNivel">Nivel Seguridad: <span className="text-red-500">*</span></label>
                             <Dropdown
                                 id="idNivel"
                                 value={perfil?.idNivel}
                                 options={nivelesSeguridad}
                                 onChange={(e) => onInputChange(e, 'idNivel')}
                                 placeholder="Seleccione un nivel"
+                                className={classNames({ 'p-invalid': submitted && !perfil?.idNivel })}
+                                disabled={loading}
                             />
+                            {submitted && !perfil?.idNivel && <small className="p-error">El nivel de seguridad es requerido.</small>}
                         </div>
                     </div>
                 </div>
@@ -353,6 +376,7 @@ const Perfiles = () => {
                                         <Checkbox
                                             checked={rowData.activo}
                                             onChange={(e) => onPermissionChange(e, rowData)}
+                                            disabled={loading}
                                         />
                                     )}
                                 ></Column>
