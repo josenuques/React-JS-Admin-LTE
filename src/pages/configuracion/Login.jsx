@@ -2,6 +2,7 @@ import React, { useContext, useState } from 'react';
 import { UserContext } from '../../context/UserProvider';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { URL_APIS } from '../../general/apiConfig';
+import LoadingOverlay from '../../components/LoadingOverlay';
 import Swal from 'sweetalert2';
 import './Login.css';
 
@@ -9,6 +10,7 @@ const Login = () => {
     const { user, iniciarSession } = useContext(UserContext);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     if (user) {
@@ -22,14 +24,8 @@ const Login = () => {
             clave: password
         }
         
-        console.log('Login URL:', URL_APIS.LOGIN);
-		
-		/*if(username !== '' || password !== '') {
-            iniciarSession(request);
-            navigate("/");
-        } */      
-        
         try {
+            setLoading(true);
             const response = await fetch(URL_APIS.LOGIN, {
                 method: 'POST',
                 headers: {
@@ -57,11 +53,14 @@ const Login = () => {
         } catch (error) {
             console.error('Login Error:', error);
             Swal.fire('No se pudo iniciar sesión.','error')
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div className="login-page">
+            <LoadingOverlay visible={loading} />
             <div className="login-box">
                 <div className="user-icon">
                     <i className="fas fa-user-circle"></i>
@@ -75,6 +74,7 @@ const Login = () => {
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
+                            disabled={loading}
                         />
                     </div>
                     <div className="input-group">
@@ -85,10 +85,24 @@ const Login = () => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            disabled={loading}
                         />
                     </div>
-                    <button type="submit" className="login-button">Iniciar sesión</button>
-                    <a href="#" className="forgot-password">Recuperar contraseña</a>
+                    <button 
+                        type="submit" 
+                        className="login-button"
+                        disabled={loading}
+                    >
+                        Iniciar sesión
+                    </button>
+                    <a href="#" className="forgot-password" onClick={(e) => {
+                        e.preventDefault();
+                        if (!loading) {
+                            // Implementar lógica de recuperación de contraseña
+                        }
+                    }}>
+                        Recuperar contraseña
+                    </a>
                 </form>
                 <div className="copyright">© Todos los derechos reservados.</div>
             </div>

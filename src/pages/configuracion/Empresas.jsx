@@ -10,6 +10,7 @@ import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { FileUpload } from 'primereact/fileupload';
 import { UserContext } from '../../context/UserProvider';
+import LoadingOverlay from '../../components/LoadingOverlay';
 import classNames from 'classnames';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -30,6 +31,7 @@ const Empresas = () => {
     const [tiposEmpresa, setTiposEmpresa] = useState([]);
     const [provincias, setProvincias] = useState([]);
     const [ciudades, setCiudades] = useState([]);
+    const [loading, setLoading] = useState(false);
     const toast = useRef(null);
     const dt = useRef(null);
     const fileUploadRef = useRef(null);
@@ -48,8 +50,9 @@ const Empresas = () => {
 
     const cargarEmpresas = async () => {
         try {
+            setLoading(true);
             if (user?.idempresa) {
-                const data = await ConsultarEmpresa();
+                const data = await ConsultarEmpresa(user.idempresa);
                 setEmpresas(Array.isArray(data) ? data : [data]);
             }
         } catch (error) {
@@ -59,11 +62,14 @@ const Empresas = () => {
                 detail: 'Error al cargar empresas', 
                 life: 3000 
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const cargarTiposEmpresa = async () => {
         try {
+            setLoading(true);
             const data = await ListarTiposEmpresa();
             const tiposFormateados = data.map(tipo => ({
                 label: tipo.descripcion,
@@ -77,11 +83,14 @@ const Empresas = () => {
                 detail: 'Error al cargar tipos de empresa',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const cargarProvincias = async () => {
         try {
+            setLoading(true);
             const data = await ListarProvincias();
             const provinciasFormateadas = data.map(provincia => ({
                 label: provincia.nombre,
@@ -95,11 +104,14 @@ const Empresas = () => {
                 detail: 'Error al cargar provincias',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     const cargarCiudades = async (idProvincia) => {
         try {
+            setLoading(true);
             const data = await ListarCiudades(idProvincia);
             const ciudadesFormateadas = data.map(ciudad => ({
                 label: ciudad.ciudadtexto,
@@ -113,6 +125,8 @@ const Empresas = () => {
                 detail: 'Error al cargar ciudades',
                 life: 3000
             });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -141,6 +155,7 @@ const Empresas = () => {
 
         if (empresa.nombreComercial.trim()) {
             try {
+                setLoading(true);
                 const response = await GuardarEmpresa(empresa, logoFile);
                 if (response) {
                     toast.current.show({ 
@@ -160,6 +175,8 @@ const Empresas = () => {
                     detail: 'Error al guardar la empresa', 
                     life: 3000 
                 });
+            } finally {
+                setLoading(false);
             }
         }
     };
@@ -272,20 +289,21 @@ const Empresas = () => {
 
     const empresaDialogFooter = (
         <React.Fragment>
-            <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} />
-            <Button label="Guardar" icon="pi pi-check" className="p-button-text" onClick={saveEmpresa} />
+            <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} disabled={loading} />
+            <Button label="Guardar" icon="pi pi-check" className="p-button-text" onClick={saveEmpresa} disabled={loading} />
         </React.Fragment>
     );
 
     const deleteEmpresaDialogFooter = (
         <React.Fragment>
-            <Button label="No" icon="pi pi-times" className="p-button-text" onClick={hideDeleteEmpresaDialog} />
-            <Button label="Sí" icon="pi pi-check" className="p-button-text" onClick={deleteEmpresa} />
+            <Button label="No" icon="pi pi-times" className="p-button-text" onClick={hideDeleteEmpresaDialog} disabled={loading} />
+            <Button label="Sí" icon="pi pi-check" className="p-button-text" onClick={deleteEmpresa} disabled={loading} />
         </React.Fragment>
     );
 
     return (
         <div className="datatable-crud-demo">
+            <LoadingOverlay visible={loading} />
             <Toast ref={toast} />
 
             <div className="card">
@@ -323,6 +341,7 @@ const Empresas = () => {
                 className="p-fluid"
                 footer={empresaDialogFooter}
                 onHide={hideDialog}
+                closable={!loading}
             >
                 <div className="grid">
                     <div className="col-12 md:col-6">
@@ -335,6 +354,7 @@ const Empresas = () => {
                                 required
                                 autoFocus
                                 className={classNames({ 'p-invalid': submitted && !empresa.nombreComercial })}
+                                disabled={loading}
                             />
                             {submitted && !empresa.nombreComercial && <small className="p-error">El nombre comercial es requerido.</small>}
                         </div>
@@ -346,6 +366,7 @@ const Empresas = () => {
                                 onChange={(e) => onInputChange(e, 'razonSocial')}
                                 required
                                 className={classNames({ 'p-invalid': submitted && !empresa.razonSocial })}
+                                disabled={loading}
                             />
                             {submitted && !empresa.razonSocial && <small className="p-error">La razón social es requerida.</small>}
                         </div>
@@ -357,6 +378,7 @@ const Empresas = () => {
                                 onChange={(e) => onInputChange(e, 'identificacion')}
                                 required
                                 className={classNames({ 'p-invalid': submitted && !empresa.identificacion })}
+                                disabled={loading}
                             />
                             {submitted && !empresa.identificacion && <small className="p-error">El RUC es requerido.</small>}
                         </div>
@@ -368,6 +390,7 @@ const Empresas = () => {
                                 options={tiposEmpresa}
                                 onChange={(e) => onInputChange(e, 'idTipoEmpresa')}
                                 placeholder="Seleccione un tipo"
+                                disabled={loading}
                             />
                         </div>
                     </div>
@@ -380,6 +403,7 @@ const Empresas = () => {
                                 options={provincias}
                                 onChange={(e) => onInputChange(e, 'idProvincia')}
                                 placeholder="Seleccione una provincia"
+                                disabled={loading}
                             />
                         </div>
                         <div className="field">
@@ -390,7 +414,7 @@ const Empresas = () => {
                                 options={ciudades}
                                 onChange={(e) => onInputChange(e, 'idCiudad')}
                                 placeholder="Seleccione una ciudad"
-                                disabled={!empresa.idProvincia}
+                                disabled={!empresa.idProvincia || loading}
                             />
                         </div>
                         <div className="field">
@@ -399,6 +423,7 @@ const Empresas = () => {
                                 id="direccion"
                                 value={empresa.direccion}
                                 onChange={(e) => onInputChange(e, 'direccion')}
+                                disabled={loading}
                             />
                         </div>
                         <div className="field">
@@ -407,6 +432,7 @@ const Empresas = () => {
                                 id="telefono"
                                 value={empresa.telefono}
                                 onChange={(e) => onInputChange(e, 'telefono')}
+                                disabled={loading}
                             />
                         </div>
                     </div>
@@ -419,6 +445,7 @@ const Empresas = () => {
                                 onChange={(e) => onInputChange(e, 'correo')}
                                 required
                                 className={classNames({ 'p-invalid': submitted && !empresa.correo })}
+                                disabled={loading}
                             />
                             {submitted && !empresa.correo && <small className="p-error">El correo es requerido.</small>}
                         </div>
@@ -430,6 +457,7 @@ const Empresas = () => {
                                 onChange={(e) => onDateChange(e, 'inicioActividad')}
                                 dateFormat="dd/mm/yy"
                                 showIcon
+                                disabled={loading}
                             />
                         </div>
                         <div className="field">
@@ -443,6 +471,7 @@ const Empresas = () => {
                                     onSelect={onLogoSelect}
                                     auto
                                     chooseLabel="Seleccionar Logo"
+                                    disabled={loading}
                                 />
                             </div>
                             {empresa.logoRuta && (
@@ -462,6 +491,7 @@ const Empresas = () => {
                 modal
                 footer={deleteEmpresaDialogFooter}
                 onHide={hideDeleteEmpresaDialog}
+                closable={!loading}
             >
                 <div className="confirmation-content">
                     <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />

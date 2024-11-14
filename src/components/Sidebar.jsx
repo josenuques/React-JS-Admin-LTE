@@ -16,6 +16,7 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
     const [dataUser, setDataUser] = useState(modelo);
     const [menuItems, setMenuItems] = useState([]);
     const [openMenus, setOpenMenus] = useState({});
+    const location = useLocation();
 
     useEffect(() => {
         if (user) {
@@ -24,6 +25,22 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
             setMenuItems(processedMenu);
         }
     }, [user]);
+
+    useEffect(() => {
+        // Determinar qué menú debe estar abierto basado en la ruta actual
+        const currentPath = location.pathname.substring(1); // Remover el slash inicial
+        menuItems.forEach(menuItem => {
+            const shouldBeOpen = menuItem.submenus.some(submenu => 
+                submenu.url.substring(1) === currentPath // Comparar sin el slash inicial
+            );
+            if (shouldBeOpen) {
+                setOpenMenus(prev => ({
+                    ...prev,
+                    [menuItem.id]: true
+                }));
+            }
+        });
+    }, [location.pathname, menuItems]);
 
     const processMenuData = (data) => {
         if (!Array.isArray(data) || data.length === 0) {
@@ -48,7 +65,6 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
                 nombre: item.subMenu,                
                 url: `${item.url}`
             });
-
         });
 
         return Array.from(menuMap.values()).sort((a, b) => a.orden - b.orden);
@@ -59,6 +75,10 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
             ...prevState,
             [menuId]: !prevState[menuId]
         }));
+    };
+
+    const isActiveRoute = (path) => {
+        return location.pathname === path;
     };
 
     return (
@@ -77,14 +97,14 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
                 <nav className="mt-2">
                     <ul className="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                         <li className="nav-item">
-                            <NavLink to="/dashboard" className="nav-link">
+                            <NavLink to="/dashboard" className={`nav-link ${isActiveRoute('/dashboard') || isActiveRoute('/') ? 'active' : ''}`}>
                                 <i className="nav-icon fas fa-tachometer-alt"></i>
                                 <p>Dashboard</p>
                             </NavLink>
                         </li>
                         {menuItems.map((menuItem) => (
                             <li className={`nav-item ${openMenus[menuItem.id] ? 'menu-open' : ''}`} key={menuItem.id}>
-                                <a className="nav-link" href="#" onClick={() => toggleMenu(menuItem.id)}>
+                                <a className={`nav-link ${openMenus[menuItem.id] ? 'active' : ''}`} href="#" onClick={() => toggleMenu(menuItem.id)}>
                                     <i className={menuItem.ico}></i>
                                     <p>
                                         {menuItem.nombre}
@@ -94,7 +114,10 @@ const Sidebar = forwardRef(({ collapsed }, ref) => {
                                 <ul className="nav nav-treeview" style={{display: openMenus[menuItem.id] ? 'block' : 'none'}}>
                                     {menuItem.submenus.map((submenu) => (
                                         <li className="nav-item" key={submenu.id}>
-                                            <NavLink to={submenu.url} className="nav-link">
+                                            <NavLink 
+                                                to={submenu.url} 
+                                                className={({isActive}) => `nav-link ${isActive ? 'active' : ''}`}
+                                            >
                                                 <i className="far fa-circle nav-icon"></i>
                                                 <p>{submenu.nombre}</p>
                                             </NavLink>
