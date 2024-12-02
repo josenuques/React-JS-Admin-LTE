@@ -23,13 +23,13 @@ const Login = () => {
             correo: username,
             clave: password
         }
-        
+
         try {
             setLoading(true);
             const response = await fetch(URL_APIS.LOGIN, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json;charset=utf-8'                    
+                    'Content-Type': 'application/json;charset=utf-8'
                 },
                 body: JSON.stringify(request)
             });
@@ -52,7 +52,7 @@ const Login = () => {
             }
         } catch (error) {
             console.error('Login Error:', error);
-            Swal.fire('No se pudo iniciar sesión.','error')
+            Swal.fire('No se pudo iniciar sesión.', 'error')
         } finally {
             setLoading(false);
         }
@@ -62,15 +62,19 @@ const Login = () => {
         <div className="login-page">
             <LoadingOverlay visible={loading} />
             <div className="login-box">
+                {/* <div className="logo">
+                    <img src="/img/logo.png" alt="Logo" />
+                </div> */}
                 <div className="user-icon">
                     <i className="fas fa-user-circle"></i>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="input-group">
-                        <label htmlFor="username">Nombre de usuario:</label>
-                        <input 
-                            type="email" 
+                        <label htmlFor="username">Correo electrónico</label>
+                        <input
+                            type="email"
                             id="username"
+                            placeholder="ejemplo@correo.com"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
@@ -78,33 +82,38 @@ const Login = () => {
                         />
                     </div>
                     <div className="input-group">
-                        <label htmlFor="password">Contraseña:</label>
-                        <input 
-                            type="password" 
+                        <label htmlFor="password">Contraseña</label>
+                        <input
+                            type="password"
                             id="password"
+                            placeholder="Ingrese su contraseña"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
                         />
                     </div>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         className="login-button"
                         disabled={loading}
                     >
-                        Iniciar sesión
+                        {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
                     </button>
                     <a href="#" className="forgot-password" onClick={(e) => {
                         e.preventDefault();
                         if (!loading) {
-                            // Implementar lógica de recuperación de contraseña
+                            Swal.fire({
+                                title: 'Recuperar contraseña',
+                                text: 'Por favor, contacte al administrador del sistema.',
+                                icon: 'info'
+                            });
                         }
                     }}>
-                        Recuperar contraseña
+                        ¿Olvidaste tu contraseña?
                     </a>
                 </form>
-                <div className="copyright">© Todos los derechos reservados.</div>
+                <div className="copyright"> {new Date().getFullYear()} CENTEK. Todos los derechos reservados.</div>
             </div>
         </div>
     );
